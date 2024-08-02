@@ -9,6 +9,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as s3_deployment from 'aws-cdk-lib/aws-s3-deployment';
 import * as path from 'path';
 
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -42,7 +43,25 @@ export class CdkStack extends cdk.Stack {
 
     });
 
-    
+    // Crear carpetas dentro del bucket S3
+    new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders', {
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'athena-output-results/', // carpeta 1
+      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+    });
+
+    new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders2', {
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'converted/', // carpeta 2
+      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+    });
+
+    new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders3', {
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'raw/', // carpeta 3
+      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+    });
+
     //Creación de la base de datos de Athena..
 
     _service = 'athena';
@@ -56,6 +75,8 @@ export class CdkStack extends cdk.Stack {
         name: _database
       }
     });
+
+    /***********************************
 
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
@@ -71,6 +92,9 @@ export class CdkStack extends cdk.Stack {
         BUCKET_NAME: bucket.bucketName,
       },
     });
+
+
+
 
     _service = 'lambda';
     _description = 'query_athena_base';
@@ -103,5 +127,7 @@ export class CdkStack extends cdk.Stack {
     const postEndpoint = api.root.addResource("execute_query");
     postEndpoint.addMethod("POST", new apigateway.LambdaIntegration(queryAthenaBaseLambda));
   
+    ************************************/
+   
   }
 }
