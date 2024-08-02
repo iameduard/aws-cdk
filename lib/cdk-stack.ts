@@ -46,20 +46,20 @@ export class CdkStack extends cdk.Stack {
     // Crear carpetas dentro del bucket S3
     new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders', {
       destinationBucket: bucket,
-      destinationKeyPrefix: 'athena-output-results/', // carpeta 1
-      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+      destinationKeyPrefix: 'athena-output-results/', 
+      sources: [s3_deployment.Source.data('dummy', '')] 
     });
 
     new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders2', {
       destinationBucket: bucket,
-      destinationKeyPrefix: 'converted/', // carpeta 2
-      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+      destinationKeyPrefix: 'converted/', 
+      sources: [s3_deployment.Source.data('dummy', '')] 
     });
 
     new s3_deployment.BucketDeployment(this, 'DeployEmptyFolders3', {
       destinationBucket: bucket,
-      destinationKeyPrefix: 'raw/', // carpeta 3
-      sources: [s3_deployment.Source.data('dummy', '')] // contenido vacío
+      destinationKeyPrefix: 'raw/', 
+      sources: [s3_deployment.Source.data('dummy', '')] 
     });
 
     //Creación de la base de datos de Athena..
@@ -76,7 +76,7 @@ export class CdkStack extends cdk.Stack {
       }
     });
 
-    /***********************************
+
 
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
@@ -94,7 +94,7 @@ export class CdkStack extends cdk.Stack {
     });
 
 
-
+    /***********************************
 
     _service = 'lambda';
     _description = 'query_athena_base';
@@ -107,7 +107,7 @@ export class CdkStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         REGION_NAME: 'us-east-2',
-        OUTPUT_LOCATION: 's3://aws-bucket-data-historica-dbfondos/athena-output-results/'
+        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`
       },
     });
 
