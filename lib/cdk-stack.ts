@@ -7,6 +7,7 @@ import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as s3_deployment from 'aws-cdk-lib/aws-s3-deployment';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -94,13 +95,7 @@ export class CdkStack extends cdk.Stack {
     });
     */
 
-    const LambdaQueryAthenaBase = new NodejsFunction(this, "LambdaQueryAthenaBase", {
-      tracing: lambda.Tracing.ACTIVE,
-      environment: {
-        REGION_NAME: 'us-east-2',
-        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`
-      },
-    })
+
 
 
     /*
@@ -116,8 +111,74 @@ export class CdkStack extends cdk.Stack {
 
     */
 
+    // Rol para la función Lambda con permisos para AWS Application Auto Scaling
+
+    /*
+    const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+
+    lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
+
+    lambdaRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        "application-autoscaling:DeleteScalingPolicy",
+        "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:DescribeScalableTargets",
+        "application-autoscaling:DescribeScalingActivities",
+        "application-autoscaling:DescribeScalingPolicies",
+        "application-autoscaling:PutScalingPolicy",
+        "application-autoscaling:RegisterScalableTarget"
+      ],
+      resources: ['*'],
+    }));
+    */
+
+    /*
+    const LambdaQueryAthenaBase = new lambda.Function(this, 'LambdaQueryAthenaBase', {
+      runtime: lambda.Runtime.NODEJS_20_X,  // Usa la versión de Node.js que prefieras
+      functionName: 'LambdaQueryAthenaBase',
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/LambdaQueryAthenaBase')),  // Ruta al directorio que contiene el código
+      environment: {
+        REGION_NAME: 'us-east-2',
+        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`,
+      },
+      role: lambdaRole,
+    });
+    */
+
+    // Define the Role
+    const lambdaRole = new iam.Role(this, 'LambdaQueryAthenaBaseRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+
+    // Add policies to the Role
+    lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
+    lambdaRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        's3:*',
+        'athena:*',
+        'glue:*'
+      ],
+      resources: ['*'] // Adjust the resources according to your specific requirements
+    }));
+
+    const LambdaQueryAthenaBase = new NodejsFunction(this, 'LambdaQueryAthenaBase', {
+      functionName: 'LambdaQueryAthenaBase',
+      handler: 'index.handler',
+      entry: path.join(__dirname, '../lambda/LambdaQueryAthenaBase/index.ts'),
+      environment: {
+        REGION_NAME: 'us-east-2',
+        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`,
+      },
+      role: lambdaRole,
+    });
+
+
+
     new lambda.Function(this, 'SimpleLambdaFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,  // Usa la versión de Node.js que prefieras
+      runtime: lambda.Runtime.NODEJS_20_X,  // Usa la versión de Node.js que prefieras
       functionName: 'SimpleLambdaFunction',
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/SimpleLambdaFunction')),  // Ruta al directorio que contiene el código
@@ -140,12 +201,14 @@ export class CdkStack extends cdk.Stack {
       },
     });
 
-  /***********************************
-
+ 
 
     //Grant permiso a la lambda para leer y escribir en bucket S3..
 
     bucket.grantReadWrite(LambdaQueryAthenaBase);
+
+
+    /***********************************
 
     //Define apigateway
     const api = new apigateway.RestApi(this, "devHistRestAPI", {
@@ -154,6 +217,8 @@ export class CdkStack extends cdk.Stack {
         tracingEnabled: true
       },
     })
+
+
 
     //Define POST endpoint and associate it with queryAthenaBase lambda
     const executeQueryEndpoint = api.root.addResource("query");
