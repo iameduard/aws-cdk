@@ -156,15 +156,34 @@ export class CdkStack extends cdk.Stack {
     });
     */
 
+    const lambdaRole2 = new iam.Role(this, 'LambdaS3AccessRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+    
+    // Permisos para acceder y modificar objetos en S3
+    lambdaRole2.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        's3:GetObject',
+        's3:ListBucket',
+        's3:PutObject',
+      ],
+      resources: [
+        bucket.bucketArn,
+        `${bucket.bucketArn}/*`, // Permisos en los objetos dentro del bucket
+      ],
+    }));
+
+
     const S3GlacierToStandardHandler = new NodejsFunction(this, 'S3GlacierToStandardHandler', {
       functionName: _name,
       handler: 'index.handler',
       entry: path.join(__dirname, '../lambda/S3GlacierToStandardHandler/index.ts'),
       environment: {
-        BUCKET_NAME: bucket.bucketName,
+        //BUCKET_NAME: bucket.bucketName,
+        BUCKET_NAME: 'aws-bucket-data-historica-dbfondos',
       },
       timeout: cdk.Duration.seconds(300), //300 sec = 5 min
-      //role: lambdaRole,
+      role: lambdaRole2,
     });
 
     //Grant permiso a la lambda para leer y escribir en bucket S3..
