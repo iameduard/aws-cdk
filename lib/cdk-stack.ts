@@ -128,6 +128,9 @@ export class CdkStack extends cdk.Stack {
       role: lambdaRole,
     });
 
+
+    //Grant permiso a la lambda para leer y escribir en bucket S3..
+
     bucket.grantReadWrite(LambdaQueryAthenaBase);
 
     new lambda.Function(this, 'SimpleLambdaFunction', {
@@ -150,6 +153,7 @@ export class CdkStack extends cdk.Stack {
     });
     
     // Permisos para acceder y modificar objetos en S3
+
     lambdaRole2.addToPolicy(new iam.PolicyStatement({
       actions: [
         's3:GetObject',
@@ -174,15 +178,15 @@ export class CdkStack extends cdk.Stack {
       role: lambdaRole2,
     });
 
-    //Grant permiso a la lambda para leer y escribir en bucket S3..
 
+    //Define apigateway..
 
+    _service = 'apigw';
+    _description = 'rest-api-hist';
+    _name = `${_environment}-${_region}-${_service}-${_description}`;
 
-
-    /***********************************
-
-    //Define apigateway
-    const api = new apigateway.RestApi(this, "devHistRestAPI", {
+    const api = new apigateway.RestApi(this, "RestAPI", {
+      restApiName: _name,
       deployOptions: {
         dataTraceEnabled: true,
         tracingEnabled: true
@@ -190,12 +194,15 @@ export class CdkStack extends cdk.Stack {
     })
 
 
+    //Define POST endpoint and associate it with queryAthenaBase lambda..
 
-    //Define POST endpoint and associate it with queryAthenaBase lambda
     const executeQueryEndpoint = api.root.addResource("query");
     const executeQueryEndpointMethod = executeQueryEndpoint.addMethod("POST", new apigateway.LambdaIntegration(LambdaQueryAthenaBase));
 
-    */
+    const changeStateEndpoint = api.root.addResource("to_standard");
+    const changeStateEndpointMethod = changeStateEndpoint.addMethod("POST", new apigateway.LambdaIntegration(ChangeS3ToStandard));
+
+
    
   }
 }
