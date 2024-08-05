@@ -141,20 +141,9 @@ export class CdkStack extends cdk.Stack {
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
     _service = 'lambda';
-    _description = 'change_s3_to_standard';
+    _description = 's3_to_standard';
     _name = `${_environment}-${_region}-${_service}-${_description}`;
 
-      /*
-    const lambdaFunction = new lambda.Function(this, 'S3GlacierToStandardHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      functionName: 'S3GlacierToStandardHandler',
-      handler: 'index.handler',  //dev-us-east2-lambda-changestate
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/S3GlacierToStandardHandler')),
-      environment: {
-        BUCKET_NAME: bucket.bucketName,
-      },
-    });
-    */
 
     const lambdaRole2 = new iam.Role(this, 'LambdaS3AccessRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -174,13 +163,12 @@ export class CdkStack extends cdk.Stack {
     }));
 
 
-    const S3GlacierToStandardHandler = new NodejsFunction(this, 'S3GlacierToStandardHandler', {
+    const ChangeS3ToStandard = new NodejsFunction(this, 'ChangeS3ToStandard', {
       functionName: _name,
       handler: 'index.handler',
-      entry: path.join(__dirname, '../lambda/S3GlacierToStandardHandler/index.ts'),
+      entry: path.join(__dirname, '../lambda/ChangeS3ToStandard/index.ts'),
       environment: {
-        //BUCKET_NAME: bucket.bucketName,
-        BUCKET_NAME: 'aws-bucket-data-historica-dbfondos',
+        BUCKET_NAME: bucket.bucketName,
       },
       timeout: cdk.Duration.seconds(300), //300 sec = 5 min
       role: lambdaRole2,
