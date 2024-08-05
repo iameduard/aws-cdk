@@ -21,6 +21,7 @@ const _region = 'us-east-2';
 
 let _service;
 let _description;
+let _name;
 
 
 export class CdkStack extends cdk.Stack {
@@ -31,12 +32,12 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'bk';
     _description = 'datahist';
-    const _bucket = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_service}-${_description}`;
 
     // Creación de Bucket S3 donde se almacenara la data histórica
 
     const bucket = new s3.Bucket(this, 'SiteBucket', {
-      bucketName: _bucket,
+      bucketName: _name,
       publicReadAccess: false,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // NOT recommended for production code
@@ -67,34 +68,21 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'athena';
     _description = 'dbfondos';
-    const _database = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_service}-${_description}`;
 
     // Create a Glue database which Athena uses
     const database = new glue.CfnDatabase(this, 'AthenaDatabase', {
       catalogId: this.account,
       databaseInput: {
-        name: _database
+        name: _name
       }
     });
 
 
     _service = 'lambda';
     _description = 'query_athena_base';
-    const _lambda2 = `${_environment}-${_region}-${_service}-${_description}`; //dev-us-east-2-lambda-query_athena_base
-    console.log(_lambda2)
-
-    /*
-    // define lambda function for Athena query
-    const queryAthenaBaseLambda = new nodejs.NodejsFunction(this, _lambda2, {
-      tracing: lambda.Tracing.ACTIVE,
-      handler: 'handler',
-      environment: {
-        REGION_NAME: 'us-east-2',
-        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`
-      },
-    });
-    */
-
+    _name = `${_environment}-${_region}-${_service}-${_description}`; //dev-us-east-2-lambda-query_athena_base
+    //console.log(_lambda2)
 
 
 
@@ -111,49 +99,13 @@ export class CdkStack extends cdk.Stack {
 
     */
 
-    // Rol para la función Lambda con permisos para AWS Application Auto Scaling
-
-    /*
-    const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-    });
-
-    lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
-
-    lambdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: [
-        "application-autoscaling:DeleteScalingPolicy",
-        "application-autoscaling:DeregisterScalableTarget",
-        "application-autoscaling:DescribeScalableTargets",
-        "application-autoscaling:DescribeScalingActivities",
-        "application-autoscaling:DescribeScalingPolicies",
-        "application-autoscaling:PutScalingPolicy",
-        "application-autoscaling:RegisterScalableTarget"
-      ],
-      resources: ['*'],
-    }));
-    */
-
-    /*
-    const LambdaQueryAthenaBase = new lambda.Function(this, 'LambdaQueryAthenaBase', {
-      runtime: lambda.Runtime.NODEJS_20_X,  // Usa la versión de Node.js que prefieras
-      functionName: 'LambdaQueryAthenaBase',
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/LambdaQueryAthenaBase')),  // Ruta al directorio que contiene el código
-      environment: {
-        REGION_NAME: 'us-east-2',
-        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`,
-      },
-      role: lambdaRole,
-    });
-    */
 
     // Define the Role
     const lambdaRole = new iam.Role(this, 'LambdaQueryAthenaBaseRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
-    // Add policies to the Role
+    // Agregando politicas al role
     lambdaRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
     lambdaRole.addToPolicy(new iam.PolicyStatement({
       actions: [
@@ -165,17 +117,18 @@ export class CdkStack extends cdk.Stack {
     }));
 
     const LambdaQueryAthenaBase = new NodejsFunction(this, 'LambdaQueryAthenaBase', {
-      functionName: 'LambdaQueryAthenaBase',
+      functionName: _name,
       handler: 'index.handler',
       entry: path.join(__dirname, '../lambda/LambdaQueryAthenaBase/index.ts'),
       environment: {
         REGION_NAME: 'us-east-2',
-        OUTPUT_LOCATION: `s3://${_bucket}/athena-output-results/`,
+        OUTPUT_LOCATION: `s3://${bucket.bucketName}/athena-output-results/`,
       },
+      timeout: cdk.Duration.seconds(300), //300 sec = 5 min
       role: lambdaRole,
     });
 
-
+    bucket.grantReadWrite(LambdaQueryAthenaBase);
 
     new lambda.Function(this, 'SimpleLambdaFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,  // Usa la versión de Node.js que prefieras
@@ -188,9 +141,10 @@ export class CdkStack extends cdk.Stack {
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
     _service = 'lambda';
-    _description = 'changestate';
-    const _lambda = `${_environment}-${_region}-${_service}-${_description}`;
+    _description = 'change_s3_to_standard';
+    _name = `${_environment}-${_region}-${_service}-${_description}`;
 
+      /*
     const lambdaFunction = new lambda.Function(this, 'S3GlacierToStandardHandler', {
       runtime: lambda.Runtime.NODEJS_20_X,
       functionName: 'S3GlacierToStandardHandler',
@@ -200,12 +154,22 @@ export class CdkStack extends cdk.Stack {
         BUCKET_NAME: bucket.bucketName,
       },
     });
+    */
 
- 
+    const S3GlacierToStandardHandler = new NodejsFunction(this, 'S3GlacierToStandardHandler', {
+      functionName: _name,
+      handler: 'index.handler',
+      entry: path.join(__dirname, '../lambda/S3GlacierToStandardHandler/index.ts'),
+      environment: {
+        BUCKET_NAME: bucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(300), //300 sec = 5 min
+      //role: lambdaRole,
+    });
 
     //Grant permiso a la lambda para leer y escribir en bucket S3..
 
-    bucket.grantReadWrite(LambdaQueryAthenaBase);
+
 
 
     /***********************************
