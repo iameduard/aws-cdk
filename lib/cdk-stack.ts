@@ -18,6 +18,7 @@ import * as path from 'path';
 
 const _environment = 'dev';
 const _region = 'us-east-2';
+const _project = 'hist';
 
 let _service;
 let _description;
@@ -30,9 +31,9 @@ export class CdkStack extends cdk.Stack {
 
     // Define environment, region and description
 
-    _service = 'bk';
+    _service = 's3';
     _description = 'datahist';
-    _name = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     // Creación de Bucket S3 donde se almacenara la data histórica
 
@@ -68,7 +69,8 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'athena';
     _description = 'dbfondos';
-    _name = `${_environment}-${_region}-${_service}-${_description}`;
+    //_name = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     // Create a Glue database which Athena uses
     const database = new glue.CfnDatabase(this, 'AthenaDatabase', {
@@ -81,7 +83,8 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'lambda';
     _description = 'query_athena_base';
-    _name = `${_environment}-${_region}-${_service}-${_description}`; //dev-us-east-2-lambda-query_athena_base
+    //_name = `${_environment}-${_region}-${_service}-${_description}`; //dev-us-east-2-lambda-query_athena_base
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
     //console.log(_lambda2)
 
 
@@ -123,6 +126,7 @@ export class CdkStack extends cdk.Stack {
       environment: {
         REGION_NAME: 'us-east-2',
         OUTPUT_LOCATION: `s3://${bucket.bucketName}/athena-output-results/`,
+        BUCKET_NAME: bucket.bucketName,
       },
       timeout: cdk.Duration.seconds(300), //300 sec = 5 min
       role: lambdaRole,
@@ -144,8 +148,9 @@ export class CdkStack extends cdk.Stack {
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
     _service = 'lambda';
-    _description = 's3_to_standard';
-    _name = `${_environment}-${_region}-${_service}-${_description}`;
+    _description = 's3_to_std';
+    //_name = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
 
     const lambdaRole2 = new iam.Role(this, 'LambdaS3AccessRole', {
@@ -179,11 +184,23 @@ export class CdkStack extends cdk.Stack {
     });
 
 
+    const GenerateS3DownloadLink = new NodejsFunction(this, 'GenerateS3DownloadLink', {
+      functionName: _name,
+      handler: 'index.handler',
+      entry: path.join(__dirname, '../lambda/GenerateS3DownloadLink/index.ts'),
+      environment: {
+        BUCKET_NAME: bucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(300), //300 sec = 5 min
+      role: lambdaRole2,
+    });
+
     //Define apigateway..
 
     _service = 'apigw';
-    _description = 'rest-api-hist';
-    _name = `${_environment}-${_region}-${_service}-${_description}`;
+    _description = 'rest-api';
+    //_name = `${_environment}-${_region}-${_service}-${_description}`;
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     const api = new apigateway.RestApi(this, "RestAPI", {
       restApiName: _name,
