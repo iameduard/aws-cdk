@@ -4,4 +4,17 @@ import * as cdk from 'aws-cdk-lib';
 import { CdkStack } from '../lib/cdk-stack';
 
 const app = new cdk.App();
-new CdkStack(app, 'CdkStack');
+//new CdkStack(app, 'CdkStack');
+
+
+// instantiate dev stack
+new CdkStack(app, 'dev', {
+    stackName: 'dev',
+    deploymentEnvironment: 'dev',
+  });
+  
+  // instantiate prod stack
+  new CdkStack(app, 'prod', {
+    stackName: 'prod',
+    deploymentEnvironment: 'prod',
+  });

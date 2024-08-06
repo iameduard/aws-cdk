@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps, App } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as glue from 'aws-cdk-lib/aws-glue';
@@ -15,6 +16,10 @@ import * as path from 'path';
 
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
+interface MyCdkStackProps extends StackProps {
+  stackName: 'dev' | 'prod'
+  deploymentEnvironment: 'dev' | 'prod';
+}
 
 const _environment = 'dev';
 const _region = 'us-east-2';
@@ -25,8 +30,8 @@ let _description;
 let _name;
 
 
-export class CdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class CdkStack extends Stack {
+  constructor(scope: cdk.App, id: string, props?: MyCdkStackProps) {
     super(scope, id, props);
 
     // Define environment, region and description
@@ -69,7 +74,6 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'athena';
     _description = 'dbfondos';
-    //_name = `${_environment}-${_region}-${_service}-${_description}`;
     _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     // Create a Glue database which Athena uses
@@ -81,9 +85,8 @@ export class CdkStack extends cdk.Stack {
     });
 
 
-    _service = 'lambda';
+    _service = 'lbda';
     _description = 'query_athena_base';
-    //_name = `${_environment}-${_region}-${_service}-${_description}`; //dev-us-east-2-lambda-query_athena_base
     _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
     //console.log(_lambda2)
 
@@ -137,19 +140,11 @@ export class CdkStack extends cdk.Stack {
 
     bucket.grantReadWrite(LambdaQueryAthenaBase);
 
-    new lambda.Function(this, 'SimpleLambdaFunction', {
-      runtime: lambda.Runtime.NODEJS_20_X,  // Usa la versión de Node.js que prefieras
-      functionName: 'SimpleLambdaFunction',
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/SimpleLambdaFunction')),  // Ruta al directorio que contiene el código
-    });
-
   
     //Creación de la lambda que cambia el estado de los archivos S3 dentro del Bucket.
 
-    _service = 'lambda';
+    _service = 'lbda';
     _description = 's3_to_std';
-    //_name = `${_environment}-${_region}-${_service}-${_description}`;
     _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
 
@@ -183,6 +178,9 @@ export class CdkStack extends cdk.Stack {
       role: lambdaRole2,
     });
 
+    _service = 'lbda';
+    _description = 's3_dwl_link';
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     const GenerateS3DownloadLink = new NodejsFunction(this, 'GenerateS3DownloadLink', {
       functionName: _name,
@@ -199,7 +197,6 @@ export class CdkStack extends cdk.Stack {
 
     _service = 'apigw';
     _description = 'rest-api';
-    //_name = `${_environment}-${_region}-${_service}-${_description}`;
     _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     const api = new apigateway.RestApi(this, "RestAPI", {
@@ -218,6 +215,9 @@ export class CdkStack extends cdk.Stack {
 
     const changeStateEndpoint = api.root.addResource("to_standard");
     const changeStateEndpointMethod = changeStateEndpoint.addMethod("POST", new apigateway.LambdaIntegration(ChangeS3ToStandard));
+
+    const createLinkEndpoint = api.root.addResource("getLink");
+    const createLinkEndpointMethod = createLinkEndpoint.addMethod("POST", new apigateway.LambdaIntegration(GenerateS3DownloadLink));
 
 
    
