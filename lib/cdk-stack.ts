@@ -37,7 +37,7 @@ export class CdkStack extends Stack {
     // Define environment, region and description
 
     _service = 's3';
-    _description = 'datahist';
+    _description = 'dbfondos';
     _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
 
     // Creación de Bucket S3 donde se almacenara la data histórica
@@ -174,7 +174,7 @@ export class CdkStack extends Stack {
       environment: {
         BUCKET_NAME: bucket.bucketName,
       },
-      timeout: cdk.Duration.seconds(300), //300 sec = 5 min
+      timeout: cdk.Duration.seconds(60), //60 sec = 1 min
       role: lambdaRole2,
     });
 
@@ -189,8 +189,20 @@ export class CdkStack extends Stack {
       environment: {
         BUCKET_NAME: bucket.bucketName,
       },
-      timeout: cdk.Duration.seconds(300), //300 sec = 5 min
+      timeout: cdk.Duration.seconds(60), //60 sec = 1 min
       role: lambdaRole2,
+    });
+
+
+    _service = 'lbda';
+    _description = 'sqs_notif_center';
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
+
+    const SendMessageSQSNotification = new NodejsFunction(this, 'SendMessageSQSNotification', {
+      functionName: _name,
+      handler: 'index.handler',
+      entry: path.join(__dirname, '../lambda/SendMessageSQSNotification/index.ts'),
+      timeout: cdk.Duration.seconds(60), //60 sec = 1 min
     });
 
     //Define apigateway..
@@ -219,7 +231,9 @@ export class CdkStack extends Stack {
     const createLinkEndpoint = api.root.addResource("getLink");
     const createLinkEndpointMethod = createLinkEndpoint.addMethod("POST", new apigateway.LambdaIntegration(GenerateS3DownloadLink));
 
+    const mgNotifCenterEndpoint = api.root.addResource("mgNotifCenter");
+    const mgNotifCenterEndpointMethod = mgNotifCenterEndpoint.addMethod("POST", new apigateway.LambdaIntegration(SendMessageSQSNotification));
 
-   
+
   }
 }
