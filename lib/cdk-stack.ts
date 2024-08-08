@@ -205,6 +205,19 @@ export class CdkStack extends Stack {
       timeout: cdk.Duration.seconds(60), //60 sec = 1 min
     });
 
+
+    _service = 'lbda';
+    _description = 'validate_data_loaded';
+    _name = `${_environment}-${_region}-${_project}-${_service}-${_description}`;
+
+    const ValidateDataLoaded = new NodejsFunction(this, 'ValidateDataLoaded', {
+      functionName: _name,
+      handler: 'index.handler',
+      entry: path.join(__dirname, '../lambda/ValidateDataLoaded/index.ts'),
+      timeout: cdk.Duration.seconds(60), //60 sec = 1 min
+    });
+
+
     //Define apigateway..
 
     _service = 'apigw';
@@ -234,6 +247,8 @@ export class CdkStack extends Stack {
     const mgNotifCenterEndpoint = api.root.addResource("mgNotifCenter");
     const mgNotifCenterEndpointMethod = mgNotifCenterEndpoint.addMethod("POST", new apigateway.LambdaIntegration(SendMessageSQSNotification));
 
+    const ValidateDataLoadedEndpoint = api.root.addResource("ValidateDataLoaded");
+    const ValidateDataLoadedEndpointMethod = ValidateDataLoadedEndpoint.addMethod("POST", new apigateway.LambdaIntegration(ValidateDataLoaded));
 
   }
 }
